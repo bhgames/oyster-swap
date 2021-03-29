@@ -1,104 +1,101 @@
-import { Numberu64 } from "@solana/spl-token-swap";
-import { PublicKey, Account, TransactionInstruction } from "@solana/web3.js";
-import * as BufferLayout from "buffer-layout";
-import { CurveType, PoolConfig } from "./pool";
+import { Numberu64 } from '@solana/spl-token-swap';
+import { PublicKey, Account, TransactionInstruction } from '@solana/web3.js';
+import * as BufferLayout from 'buffer-layout';
+import { CurveType, PoolConfig } from './pool';
 
-export { TokenSwap } from "@solana/spl-token-swap";
+export { TokenSwap } from '@solana/spl-token-swap';
 
 /**
  * Layout for a public key
  */
-export const publicKey = (property: string = "publicKey"): Object => {
+export const publicKey = (property: string = 'publicKey'): Object => {
   return BufferLayout.blob(32, property);
 };
 
 /**
  * Layout for a 64bit unsigned value
  */
-export const uint64 = (property: string = "uint64"): Object => {
+export const uint64 = (property: string = 'uint64'): Object => {
   return BufferLayout.blob(8, property);
 };
 
 const FEE_LAYOUT = BufferLayout.struct(
   [
-    BufferLayout.nu64("tradeFeeNumerator"),
-    BufferLayout.nu64("tradeFeeDenominator"),
-    BufferLayout.nu64("ownerTradeFeeNumerator"),
-    BufferLayout.nu64("ownerTradeFeeDenominator"),
-    BufferLayout.nu64("ownerWithdrawFeeNumerator"),
-    BufferLayout.nu64("ownerWithdrawFeeDenominator"),
-    BufferLayout.nu64("hostFeeNumerator"),
-    BufferLayout.nu64("hostFeeDenominator"),
+    BufferLayout.nu64('tradeFeeNumerator'),
+    BufferLayout.nu64('tradeFeeDenominator'),
+    BufferLayout.nu64('ownerTradeFeeNumerator'),
+    BufferLayout.nu64('ownerTradeFeeDenominator'),
+    BufferLayout.nu64('ownerWithdrawFeeNumerator'),
+    BufferLayout.nu64('ownerWithdrawFeeDenominator'),
+    BufferLayout.nu64('hostFeeNumerator'),
+    BufferLayout.nu64('hostFeeDenominator'),
   ],
-  "fees"
+  'fees'
 );
 
-export const TokenSwapLayoutLegacyV0 = BufferLayout.struct([
-  BufferLayout.u8("isInitialized"),
-  BufferLayout.u8("nonce"),
-  publicKey("tokenAccountA"),
-  publicKey("tokenAccountB"),
-  publicKey("tokenPool"),
-  uint64("feesNumerator"),
-  uint64("feesDenominator"),
+/// Note to the confused people: Bartosz's v0, v1, v2 do not line up
+// To the backend's v0, v1, etc.
+// TokenSwapLayoutV0 maps to an older independent contract
+// TokenSwapLayoutV1 maps to SwapV1 on the backend
+// TokenSwapLayout maps to SwapV2.
+export const TokenSwapLayoutV0: typeof BufferLayout.Structure = BufferLayout.struct([
+  BufferLayout.u8('isInitialized'),
+  BufferLayout.u8('nonce'),
+  publicKey('tokenProgramId'),
+  publicKey('tokenAccountA'),
+  publicKey('tokenAccountB'),
+  publicKey('tokenPool'),
+  publicKey('mintA'),
+  publicKey('mintB'),
+  publicKey('feeAccount'),
+  BufferLayout.u8('curveType'),
+  uint64('tradeFeeNumerator'),
+  uint64('tradeFeeDenominator'),
+  uint64('ownerTradeFeeNumerator'),
+  uint64('ownerTradeFeeDenominator'),
+  uint64('ownerWithdrawFeeNumerator'),
+  uint64('ownerWithdrawFeeDenominator'),
+  BufferLayout.blob(16, 'padding'),
 ]);
 
-export const TokenSwapLayoutV1: typeof BufferLayout.Structure = BufferLayout.struct(
-  [
-    BufferLayout.u8("isInitialized"),
-    BufferLayout.u8("nonce"),
-    publicKey("tokenProgramId"),
-    publicKey("tokenAccountA"),
-    publicKey("tokenAccountB"),
-    publicKey("tokenPool"),
-    publicKey("mintA"),
-    publicKey("mintB"),
-    publicKey("feeAccount"),
-    BufferLayout.u8("curveType"),
-    uint64("tradeFeeNumerator"),
-    uint64("tradeFeeDenominator"),
-    uint64("ownerTradeFeeNumerator"),
-    uint64("ownerTradeFeeDenominator"),
-    uint64("ownerWithdrawFeeNumerator"),
-    uint64("ownerWithdrawFeeDenominator"),
-    BufferLayout.blob(16, "padding"),
-  ]
-);
+const CURVE_NODE = BufferLayout.union(BufferLayout.u8(), BufferLayout.blob(32), 'curve');
+CURVE_NODE.addVariant(0, BufferLayout.struct([]), 'constantProduct');
+CURVE_NODE.addVariant(1, BufferLayout.struct([BufferLayout.nu64('token_b_price')]), 'constantPrice');
+CURVE_NODE.addVariant(2, BufferLayout.struct([]), 'stable');
+CURVE_NODE.addVariant(3, BufferLayout.struct([BufferLayout.nu64('token_b_offset')]), 'offset');
 
-const CURVE_NODE = BufferLayout.union(
-  BufferLayout.u8(),
-  BufferLayout.blob(32),
-  "curve"
-);
-CURVE_NODE.addVariant(0, BufferLayout.struct([]), "constantProduct");
-CURVE_NODE.addVariant(
-  1,
-  BufferLayout.struct([BufferLayout.nu64("token_b_price")]),
-  "constantPrice"
-);
-CURVE_NODE.addVariant(2, BufferLayout.struct([]), "stable");
-CURVE_NODE.addVariant(
-  3,
-  BufferLayout.struct([BufferLayout.nu64("token_b_offset")]),
-  "offset"
-);
+export const TokenSwapLayoutV1: typeof BufferLayout.Structure = BufferLayout.struct([
+  BufferLayout.u8('version'),
+  BufferLayout.u8('isInitialized'),
+  BufferLayout.u8('nonce'),
+  publicKey('tokenProgramId'),
+  publicKey('tokenAccountA'),
+  publicKey('tokenAccountB'),
+  publicKey('tokenPool'),
+  publicKey('mintA'),
+  publicKey('mintB'),
+  publicKey('feeAccount'),
+  FEE_LAYOUT,
+  CURVE_NODE,
+]);
 
-export const TokenSwapLayout: typeof BufferLayout.Structure = BufferLayout.struct(
-  [
-    BufferLayout.u8("version"),
-    BufferLayout.u8("isInitialized"),
-    BufferLayout.u8("nonce"),
-    publicKey("tokenProgramId"),
-    publicKey("tokenAccountA"),
-    publicKey("tokenAccountB"),
-    publicKey("tokenPool"),
-    publicKey("mintA"),
-    publicKey("mintB"),
-    publicKey("feeAccount"),
-    FEE_LAYOUT,
-    CURVE_NODE,
-  ]
-);
+export const TokenSwapLayout: typeof BufferLayout.Structure = BufferLayout.struct([
+  BufferLayout.u8('version'),
+  BufferLayout.u8('isInitialized'),
+  BufferLayout.u8('nonce'),
+  publicKey('tokenProgramId'),
+  publicKey('tokenAccountA'),
+  publicKey('tokenAccountB'),
+  publicKey('tokenPool'),
+  publicKey('mintA'),
+  publicKey('mintB'),
+  publicKey('feeAccount'),
+  FEE_LAYOUT,
+  CURVE_NODE,
+  BufferLayout.u32('freezeAuthorityOption'),
+  publicKey('freezeAuthority'),
+  BufferLayout.u8('freezeAuthorityBitMask'),
+]);
 
 export const createInitSwapInstruction = (
   tokenSwapAccount: Account,
@@ -128,28 +125,32 @@ export const createInitSwapInstruction = (
   let data = Buffer.alloc(1024);
   if (isLatest) {
     const fields = [
-      BufferLayout.u8("instruction"),
-      BufferLayout.u8("nonce"),
-      BufferLayout.nu64("tradeFeeNumerator"),
-      BufferLayout.nu64("tradeFeeDenominator"),
-      BufferLayout.nu64("ownerTradeFeeNumerator"),
-      BufferLayout.nu64("ownerTradeFeeDenominator"),
-      BufferLayout.nu64("ownerWithdrawFeeNumerator"),
-      BufferLayout.nu64("ownerWithdrawFeeDenominator"),
-      BufferLayout.nu64("hostFeeNumerator"),
-      BufferLayout.nu64("hostFeeDenominator"),
-      BufferLayout.u8("curveType"),
+      BufferLayout.u8('instruction'),
+      BufferLayout.u8('nonce'),
+      BufferLayout.nu64('tradeFeeNumerator'),
+      BufferLayout.nu64('tradeFeeDenominator'),
+      BufferLayout.nu64('ownerTradeFeeNumerator'),
+      BufferLayout.nu64('ownerTradeFeeDenominator'),
+      BufferLayout.nu64('ownerWithdrawFeeNumerator'),
+      BufferLayout.nu64('ownerWithdrawFeeDenominator'),
+      BufferLayout.nu64('hostFeeNumerator'),
+      BufferLayout.nu64('hostFeeDenominator'),
+      BufferLayout.u8('curveType'),
     ];
 
     if (config.curveType === CurveType.ConstantProductWithOffset) {
-      fields.push(BufferLayout.nu64("token_b_offset"));
-      fields.push(BufferLayout.blob(24, "padding"));
+      fields.push(BufferLayout.nu64('token_b_offset'));
+      fields.push(BufferLayout.blob(24, 'padding'));
     } else if (config.curveType === CurveType.ConstantPrice) {
-      fields.push(BufferLayout.nu64("token_b_price"));
-      fields.push(BufferLayout.blob(24, "padding"));
+      fields.push(BufferLayout.nu64('token_b_price'));
+      fields.push(BufferLayout.blob(24, 'padding'));
     } else {
-      fields.push(BufferLayout.blob(32, "padding"));
+      fields.push(BufferLayout.blob(32, 'padding'));
     }
+
+    fields.push(BufferLayout.u8('freezeAuthorityOption'));
+    fields.push(publicKey('freezeAuthority'));
+    fields.push(BufferLayout.u8('freezeAuthorityBitMask'));
 
     const commandDataLayout = BufferLayout.struct(fields);
 
@@ -161,22 +162,24 @@ export const createInitSwapInstruction = (
         nonce,
         ...fees,
         ...rest,
+        freezeAuthority: config.freezeAuthority ? Buffer.from(config.freezeAuthority.toBuffer()) : undefined,
+        freezeAuthorityOption: config.freezeAuthority ? 1 : 0,
       },
       data
     );
     data = data.slice(0, encodeLength);
   } else {
     const commandDataLayout = BufferLayout.struct([
-      BufferLayout.u8("instruction"),
-      BufferLayout.u8("nonce"),
-      BufferLayout.u8("curveType"),
-      BufferLayout.nu64("tradeFeeNumerator"),
-      BufferLayout.nu64("tradeFeeDenominator"),
-      BufferLayout.nu64("ownerTradeFeeNumerator"),
-      BufferLayout.nu64("ownerTradeFeeDenominator"),
-      BufferLayout.nu64("ownerWithdrawFeeNumerator"),
-      BufferLayout.nu64("ownerWithdrawFeeDenominator"),
-      BufferLayout.blob(16, "padding"),
+      BufferLayout.u8('instruction'),
+      BufferLayout.u8('nonce'),
+      BufferLayout.u8('curveType'),
+      BufferLayout.nu64('tradeFeeNumerator'),
+      BufferLayout.nu64('tradeFeeDenominator'),
+      BufferLayout.nu64('ownerTradeFeeNumerator'),
+      BufferLayout.nu64('ownerTradeFeeDenominator'),
+      BufferLayout.nu64('ownerWithdrawFeeNumerator'),
+      BufferLayout.nu64('ownerWithdrawFeeDenominator'),
+      BufferLayout.blob(16, 'padding'),
     ]);
 
     const encodeLength = commandDataLayout.encode(
@@ -221,10 +224,10 @@ export const depositInstruction = (
   isLatest: boolean
 ): TransactionInstruction => {
   const dataLayout = BufferLayout.struct([
-    BufferLayout.u8("instruction"),
-    uint64("poolTokenAmount"),
-    uint64("maximumTokenA"),
-    uint64("maximumTokenB"),
+    BufferLayout.u8('instruction'),
+    uint64('poolTokenAmount'),
+    uint64('maximumTokenA'),
+    uint64('maximumTokenB'),
   ]);
 
   const data = Buffer.alloc(dataLayout.span);
@@ -285,9 +288,9 @@ export const depositExactOneInstruction = (
   isLatest: boolean
 ): TransactionInstruction => {
   const dataLayout = BufferLayout.struct([
-    BufferLayout.u8("instruction"),
-    uint64("sourceTokenAmount"),
-    uint64("minimumPoolTokenAmount"),
+    BufferLayout.u8('instruction'),
+    uint64('sourceTokenAmount'),
+    uint64('minimumPoolTokenAmount'),
   ]);
 
   const data = Buffer.alloc(dataLayout.span);
@@ -348,10 +351,10 @@ export const withdrawInstruction = (
   isLatest: boolean
 ): TransactionInstruction => {
   const dataLayout = BufferLayout.struct([
-    BufferLayout.u8("instruction"),
-    uint64("poolTokenAmount"),
-    uint64("minimumTokenA"),
-    uint64("minimumTokenB"),
+    BufferLayout.u8('instruction'),
+    uint64('poolTokenAmount'),
+    uint64('minimumTokenA'),
+    uint64('minimumTokenB'),
   ]);
 
   const data = Buffer.alloc(dataLayout.span);
@@ -417,9 +420,9 @@ export const withdrawExactOneInstruction = (
   isLatest: boolean
 ): TransactionInstruction => {
   const dataLayout = BufferLayout.struct([
-    BufferLayout.u8("instruction"),
-    uint64("sourceTokenAmount"),
-    uint64("maximumTokenAmount"),
+    BufferLayout.u8('instruction'),
+    uint64('sourceTokenAmount'),
+    uint64('maximumTokenAmount'),
   ]);
 
   const data = Buffer.alloc(dataLayout.span);
@@ -483,9 +486,9 @@ export const swapInstruction = (
   isLatest: boolean
 ): TransactionInstruction => {
   const dataLayout = BufferLayout.struct([
-    BufferLayout.u8("instruction"),
-    uint64("amountIn"),
-    uint64("minimumAmountOut"),
+    BufferLayout.u8('instruction'),
+    uint64('amountIn'),
+    uint64('minimumAmountOut'),
   ]);
 
   const keys = isLatest
@@ -524,6 +527,35 @@ export const swapInstruction = (
       instruction: 1, // Swap instruction
       amountIn: new Numberu64(amountIn).toBuffer(),
       minimumAmountOut: new Numberu64(minimumAmountOut).toBuffer(),
+    },
+    data
+  );
+
+  return new TransactionInstruction({
+    keys,
+    programId: swapProgramId,
+    data,
+  });
+};
+
+export const setFreezeAuthorityBitMaskInstruction = (
+  tokenSwap: PublicKey,
+  freezeAuthority: PublicKey,
+  swapProgramId: PublicKey,
+  freezeAuthorityBitMask: number
+): TransactionInstruction => {
+  const dataLayout = BufferLayout.struct([BufferLayout.u8('instruction'), BufferLayout.u8('freezeAuthorityBitMask')]);
+
+  const keys = [
+    { pubkey: tokenSwap, isSigner: false, isWritable: true },
+    { pubkey: freezeAuthority, isSigner: true, isWritable: false },
+  ];
+
+  const data = Buffer.alloc(dataLayout.span);
+  dataLayout.encode(
+    {
+      instruction: 6, // SetFreezeAuthorityBitMask instruction
+      freezeAuthorityBitMask,
     },
     data
   );

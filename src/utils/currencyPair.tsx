@@ -1,28 +1,13 @@
-import React, {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
-import {
-  calculateDependentAmount,
-  usePoolForBasket,
-  PoolOperation,
-} from "./pools";
-import { cache, useAccountByMint } from "./accounts";
-import { MintInfo } from "@solana/spl-token";
-import { useConnection, useConnectionConfig } from "./connection";
-import {
-  CurveType,
-  PoolConfig,
-  TokenAccount,
-  DEFAULT_DENOMINATOR,
-} from "../models";
-import { convert, getTokenIcon, getTokenName } from "./utils";
-import { useHistory, useLocation } from "react-router-dom";
-import bs58 from "bs58";
-import { TokenInfo } from "@solana/spl-token-registry";
+import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { calculateDependentAmount, usePoolForBasket, PoolOperation } from './pools';
+import { cache, useAccountByMint } from './accounts';
+import { MintInfo } from '@solana/spl-token';
+import { useConnection, useConnectionConfig } from './connection';
+import { CurveType, PoolConfig, TokenAccount, DEFAULT_DENOMINATOR } from '../models';
+import { convert, getTokenIcon, getTokenName } from './utils';
+import { useHistory, useLocation } from 'react-router-dom';
+import bs58 from 'bs58';
+import { TokenInfo } from '@solana/spl-token-registry';
 
 export interface CurrencyContextState {
   mintAddress: string;
@@ -47,9 +32,7 @@ export interface CurrencyPairContextState {
   setOptions: (config: PoolConfig) => void;
 }
 
-const CurrencyPairContext = React.createContext<CurrencyPairContextState | null>(
-  null
-);
+const CurrencyPairContext = React.createContext<CurrencyPairContextState | null>(null);
 
 const convertAmount = (amount: string, mint?: MintInfo) => {
   return parseFloat(amount) * Math.pow(10, mint?.decimals || 0);
@@ -57,8 +40,8 @@ const convertAmount = (amount: string, mint?: MintInfo) => {
 
 export const useCurrencyLeg = (config: PoolConfig, defaultMint?: string) => {
   const { tokenMap } = useConnectionConfig();
-  const [amount, setAmount] = useState("");
-  const [mintAddress, setMintAddress] = useState(defaultMint || "");
+  const [amount, setAmount] = useState('');
+  const [mintAddress, setMintAddress] = useState(defaultMint || '');
   const account = useAccountByMint(mintAddress);
   const mint = cache.getMint(mintAddress);
 
@@ -75,19 +58,9 @@ export const useCurrencyLeg = (config: PoolConfig, defaultMint?: string) => {
       convertAmount: () => convertAmount(amount, mint),
       sufficientBalance: () =>
         account !== undefined &&
-        (convert(account, mint) >= parseFloat(amount) ||
-          config.curveType === CurveType.ConstantProductWithOffset),
+        (convert(account, mint) >= parseFloat(amount) || config.curveType === CurveType.ConstantProductWithOffset),
     }),
-    [
-      mintAddress,
-      account,
-      mint,
-      amount,
-      tokenMap,
-      setAmount,
-      setMintAddress,
-      config,
-    ]
+    [mintAddress, account, mint, amount, tokenMap, setAmount, setMintAddress, config]
   );
 };
 
@@ -97,10 +70,8 @@ export function CurrencyPairProvider({ children = null as any }) {
 
   const history = useHistory();
   const location = useLocation();
-  const [lastTypedAccount, setLastTypedAccount] = useState("");
-  const [poolOperation, setPoolOperation] = useState<PoolOperation>(
-    PoolOperation.Add
-  );
+  const [lastTypedAccount, setLastTypedAccount] = useState('');
+  const [poolOperation, setPoolOperation] = useState<PoolOperation>(PoolOperation.Add);
 
   const [options, setOptions] = useState<PoolConfig>({
     curveType: CurveType.ConstantProduct,
@@ -114,6 +85,8 @@ export function CurrencyPairProvider({ children = null as any }) {
       hostFeeNumerator: 20,
       hostFeeDenominator: 100,
     },
+    freezeAuthority: undefined,
+    freezeAuthorityBitMask: 0,
   });
 
   const base = useCurrencyLeg(options);
@@ -131,10 +104,8 @@ export function CurrencyPairProvider({ children = null as any }) {
   const pool = usePoolForBasket([base.mintAddress, quote.mintAddress]);
 
   useEffect(() => {
-    const base =
-      tokens.find((t) => t.address === mintAddressA)?.symbol || mintAddressA;
-    const quote =
-      tokens.find((t) => t.address === mintAddressB)?.symbol || mintAddressB;
+    const base = tokens.find((t) => t.address === mintAddressA)?.symbol || mintAddressA;
+    const quote = tokens.find((t) => t.address === mintAddressB)?.symbol || mintAddressB;
 
     document.title = `Swap | Serum (${base}/${quote})`;
   }, [mintAddressA, mintAddressB, tokens, location]);
@@ -142,12 +113,10 @@ export function CurrencyPairProvider({ children = null as any }) {
   // updates browser history on token changes
   useEffect(() => {
     // set history
-    const base =
-      tokens.find((t) => t.address === mintAddressA)?.symbol || mintAddressA;
-    const quote =
-      tokens.find((t) => t.address === mintAddressB)?.symbol || mintAddressB;
+    const base = tokens.find((t) => t.address === mintAddressA)?.symbol || mintAddressA;
+    const quote = tokens.find((t) => t.address === mintAddressB)?.symbol || mintAddressB;
 
-    if (base && quote && location.pathname.indexOf("info") < 0) {
+    if (base && quote && location.pathname.indexOf('info') < 0) {
       history.push({
         search: `?pair=${base}-${quote}`,
       });
@@ -168,23 +137,16 @@ export function CurrencyPairProvider({ children = null as any }) {
       return;
     }
 
-    let { defaultBase, defaultQuote } = getDefaultTokens(
-      tokens,
-      location.search
-    );
+    let { defaultBase, defaultQuote } = getDefaultTokens(tokens, location.search);
     if (!defaultBase || !defaultQuote) {
       return;
     }
 
     setMintAddressA(
-      tokens.find((t) => t.symbol === defaultBase)?.address ||
-        (isValidAddress(defaultBase) ? defaultBase : "") ||
-        ""
+      tokens.find((t) => t.symbol === defaultBase)?.address || (isValidAddress(defaultBase) ? defaultBase : '') || ''
     );
     setMintAddressB(
-      tokens.find((t) => t.symbol === defaultQuote)?.address ||
-        (isValidAddress(defaultQuote) ? defaultQuote : "") ||
-        ""
+      tokens.find((t) => t.symbol === defaultQuote)?.address || (isValidAddress(defaultQuote) ? defaultQuote : '') || ''
     );
     // mintAddressA and mintAddressB are not included here to prevent infinite loop
     // eslint-disable-next-line
@@ -205,19 +167,13 @@ export function CurrencyPairProvider({ children = null as any }) {
         amount = parseFloat(amountB);
       }
 
-      const result = await calculateDependentAmount(
-        connection,
-        independent,
-        amount,
-        pool,
-        poolOperation
-      );
-      if (typeof result === "string") {
+      const result = await calculateDependentAmount(connection, independent, amount, pool, poolOperation);
+      if (typeof result === 'string') {
         setDependent(result);
       } else if (result !== undefined && Number.isFinite(result)) {
         setDependent(result.toFixed(6));
       } else {
-        setDependent("");
+        setDependent('');
       }
     }
   }, [
@@ -269,8 +225,8 @@ const isValidAddress = (address: string) => {
 };
 
 function getDefaultTokens(tokens: TokenInfo[], search: string) {
-  let defaultBase = "SOL";
-  let defaultQuote = "USDC";
+  let defaultBase = 'SOL';
+  let defaultQuote = 'USDC';
 
   const nameToToken = tokens.reduce((map, item) => {
     map.set(item.symbol, item);
@@ -279,9 +235,9 @@ function getDefaultTokens(tokens: TokenInfo[], search: string) {
 
   if (search) {
     const urlParams = new URLSearchParams(search);
-    const pair = urlParams.get("pair");
+    const pair = urlParams.get('pair');
     if (pair) {
-      let items = pair.split("-");
+      let items = pair.split('-');
 
       if (items.length > 1) {
         if (nameToToken.has(items[0]) || isValidAddress(items[0])) {

@@ -1,5 +1,5 @@
-import { AccountInfo, PublicKey } from "@solana/web3.js";
-import { TokenAccount } from "./account";
+import { AccountInfo, PublicKey } from '@solana/web3.js';
+import { TokenAccount } from './account';
 
 export const DEFAULT_DENOMINATOR = 10_000;
 
@@ -45,7 +45,8 @@ export interface PoolConfig {
     hostFeeNumerator: number;
     hostFeeDenominator: number;
   };
-
+  freezeAuthority: PublicKey | undefined;
+  freezeAuthorityBitMask: number;
   token_b_offset?: number;
   token_b_price?: number;
 }
